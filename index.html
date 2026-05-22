@@ -208,12 +208,12 @@ textarea.inp{resize:none;line-height:1.6;min-height:100px}
 
     <!-- 文字輸入 -->
     <div id="tab-note">
-      <textarea class="inp" id="note-content" placeholder="輸入任何內容..."></textarea>
+      <textarea class="inp" id="note-content" placeholder="輸入任何內容..." onpaste="handlePaste(event,'note-content')"></textarea>
     </div>
 
     <!-- 網址輸入 -->
     <div id="tab-url" style="display:none">
-      <input class="inp" id="url-input" type="text" placeholder="貼上網址或含網址的文字...">
+      <input class="inp" id="url-input" type="text" placeholder="貼上網址或含網址的文字..." onpaste="handlePaste(event,'url-input')">
     </div>
 
     <!-- 圖片上傳 -->
@@ -632,6 +632,33 @@ async function deleteNote(id) {
       showToast('🗑️ 已刪除');
     }
   } catch(e) { showToast('❌ ' + e.message); }
+}
+
+// ── 貼上事件：嘗試從 Rich Text 抽取網址 ──
+function handlePaste(e, inputId) {
+  const clipData = e.clipboardData || window.clipboardData;
+  if (!clipData) return;
+
+  // 嘗試讀取 HTML 格式（Rich Text）
+  const html = clipData.getData('text/html');
+  if (html) {
+    // 從 HTML 抽取所有 href
+    const hrefMatch = html.match(/href=["'](https?:\/\/[^"']+)["']/);
+    if (hrefMatch) {
+      e.preventDefault();
+      const url = hrefMatch[1];
+      // 同時取純文字
+      const plainText = clipData.getData('text/plain') || '';
+      const combined = plainText ? `${plainText.trim()} ${url}` : url;
+      const el = document.getElementById(inputId);
+      if (el) {
+        el.value = combined;
+        el.dispatchEvent(new Event('input'));
+      }
+      return;
+    }
+  }
+  // 沒有 Rich Text 就用預設貼上行為
 }
 
 // ── 外部連結開啟（iOS PWA 相容）──
