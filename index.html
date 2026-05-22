@@ -250,6 +250,13 @@ textarea.inp{resize:none;line-height:1.6;min-height:100px}
 
 <div class="toast" id="toast"></div>
 
+<!-- 圖片放大 Modal -->
+<div id="img-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;align-items:center;justify-content:center;padding:20px" onclick="closeImageModal()">
+  <img id="img-modal-img" src="" style="max-width:100%;max-height:90vh;border-radius:10px;object-fit:contain">
+  <button onclick="closeImageModal()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:white;width:36px;height:36px;border-radius:50%;font-size:1.2rem;cursor:pointer">✕</button>
+  <a id="img-modal-dl" href="" download style="position:absolute;bottom:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:white;padding:8px 16px;border-radius:20px;font-size:0.82rem;text-decoration:none">⬇️ 下載</a>
+</div>
+
 <script>
 const API_BASE = localStorage.getItem('notes_api') || '';
 const USER_ID  = localStorage.getItem('notes_user') || 'default';
@@ -381,7 +388,11 @@ function makeCard(n) {
   // 圖片卡片
   if (n.type === 'image' && n.image_url) {
     return `<div class="note-card">
-      <img class="note-img-thumb" src="${n.image_url}" loading="lazy" onclick="window.open('${n.image_url}','_blank')">
+      <div style="position:relative;cursor:pointer" onclick="openImageModal('${n.image_url}')">
+        <img class="note-img-thumb" src="${n.image_url}" loading="lazy"
+          onerror="this.parentElement.innerHTML='<div style=\'height:120px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:0.8rem\'>圖片載入失敗</div>'">
+        <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border-radius:6px;padding:3px 8px;font-size:0.65rem;color:white">🔍 點擊放大</div>
+      </div>
       ${footer}
     </div>`;
   }
@@ -389,10 +400,31 @@ function makeCard(n) {
   // 網址卡片
   if (n.type === 'url') {
     const p = n.preview || {};
+    const isYoutube = p.type === 'youtube' || (n.url||'').includes('youtube.com') || (n.url||'').includes('youtu.be');
+    const ytId = p.video_id || ((n.url||'').match(/(?:v=|youtu\.be\/)([\w-]+)/)||[])[1];
+
+    let thumbHtml = '';
+    if (isYoutube && ytId) {
+      thumbHtml = `<div style="position:relative;width:100%;flex-shrink:0;margin-bottom:0">
+        <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" style="width:100%;height:160px;object-fit:cover;display:block;border-radius:10px 10px 0 0">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:10px 10px 0 0">
+          <div style="width:52px;height:52px;background:rgba(255,0,0,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem">▶</div>
+        </div>
+      </div>`;
+      return `<div class="note-card" onclick="window.open('${n.url}','_blank')" style="cursor:pointer">
+        ${thumbHtml}
+        <div style="padding:10px 12px">
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.title || 'YouTube 影片'}</div>
+          ${p.description ? `<div style="font-size:0.72rem;color:var(--dim)">${p.description}</div>` : ''}
+        </div>
+        ${footer}
+      </div>`;
+    }
+
     const thumb = p.image
-      ? `<img src="${p.image}" style="width:70px;height:70px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+      ? `<img src="${p.image}" style="width:70px;height:70px;border-radius:8px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">`
       : `<div class="url-thumb">🔗</div>`;
-    return `<div class="note-card" onclick="window.open('${n.url}','_blank')">
+    return `<div class="note-card" onclick="window.open('${n.url}','_blank')" style="cursor:pointer">
       <div class="url-preview">
         ${thumb}
         <div class="url-info">
@@ -547,6 +579,19 @@ async function deleteNote(id) {
       showToast('🗑️ 已刪除');
     }
   } catch(e) { showToast('❌ ' + e.message); }
+}
+
+// ── 圖片放大 ──
+function openImageModal(url) {
+  const modal = document.getElementById('img-modal');
+  document.getElementById('img-modal-img').src = url;
+  document.getElementById('img-modal-dl').href = url;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeImageModal() {
+  document.getElementById('img-modal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // ── Toast ──
