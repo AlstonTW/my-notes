@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="雜記本">
+<link rel="manifest" href="manifest.json">
 <title>雜記本</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -274,7 +275,46 @@ window.addEventListener('load', () => {
   document.getElementById('api-url-input').value = localStorage.getItem('notes_api') || '';
   document.getElementById('user-id-input').value = localStorage.getItem('notes_user') || 'default';
   document.getElementById('gemini-key-input').value = localStorage.getItem('notes_gemini') || '';
-  if (!API_BASE) {
+
+  // 處理 Web Share Target 傳入的參數
+  const params = new URLSearchParams(window.location.search);
+  const sharedTitle = params.get('title') || '';
+  const sharedText  = params.get('text') || '';
+  const sharedUrl   = params.get('url') || '';
+
+  if (sharedTitle || sharedText || sharedUrl) {
+    // 清除 URL 參數避免重複觸發
+    window.history.replaceState({}, '', window.location.pathname);
+
+    if (!localStorage.getItem('notes_api')) {
+      toggleSettings();
+      showToast('請先設定 API 伺服器網址');
+      return;
+    }
+
+    loadNotes().then(() => {
+      // 自動開啟新增 modal 並填入分享內容
+      showAddModal();
+      setTimeout(() => {
+        const combined = [sharedTitle, sharedText, sharedUrl].filter(Boolean).join(' ').trim();
+        const urlMatch = combined.match(/(https?:\/\/\S+)/);
+
+        if (urlMatch) {
+          // 有網址：切到網址 tab
+          const urlTab = document.querySelector('.input-tab:nth-child(2)');
+          if (urlTab) switchInputTab('url', urlTab);
+          document.getElementById('url-input').value = combined;
+        } else {
+          // 純文字
+          document.getElementById('note-content').value = combined;
+        }
+        showToast('📥 已接收分享內容，確認後儲存');
+      }, 500);
+    });
+    return;
+  }
+
+  if (!localStorage.getItem('notes_api')) {
     toggleSettings();
     showToast('請先設定 API 伺服器網址');
   } else {

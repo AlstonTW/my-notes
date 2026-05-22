@@ -1,0 +1,30 @@
+{
+  "name": "雜記本",
+  "short_name": "雜記本",
+  "description": "個人雜記本 - 儲存網址、圖片、文字",
+  "start_url": "/my-notes/",
+  "display": "standalone",
+  "background_color": "#0f0f13",
+  "theme_color": "#7c6af7",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "share_target": {
+    "action": "/my-notes/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
