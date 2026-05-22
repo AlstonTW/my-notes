@@ -159,6 +159,7 @@ textarea.inp{resize:none;line-height:1.6;min-height:100px}
     <span class="search-icon">🔍</span>
     <input class="search-input" id="search-input" placeholder="搜尋筆記..." oninput="onSearch()">
   </div>
+  <!-- 系統分類 -->
   <div class="filter-scroll" id="filter-scroll">
     <button class="filter-chip active" data-cat="" onclick="setFilter('',this)">全部</button>
     <button class="filter-chip" data-cat="note" onclick="setFilter('note',this)">💬 文字</button>
@@ -169,6 +170,20 @@ textarea.inp{resize:none;line-height:1.6;min-height:100px}
     <button class="filter-chip" data-cat="social" onclick="setFilter('social',this)">📱 社群</button>
     <button class="filter-chip" data-cat="media" onclick="setFilter('media',this)">🎬 影音</button>
     <button class="filter-chip" data-cat="info" onclick="setFilter('info',this)">📰 資訊</button>
+  </div>
+  <!-- 手動標籤篩選 -->
+  <div class="filter-scroll" id="tag-filter-scroll" style="margin-top:6px">
+    <button class="filter-chip active" data-tag="" onclick="setTagFilter('',this)">🏷️ 全部標籤</button>
+    <button class="filter-chip" data-tag="梗圖" onclick="setTagFilter('梗圖',this)">😂 梗圖</button>
+    <button class="filter-chip" data-tag="政治" onclick="setTagFilter('政治',this)">🔥 政治</button>
+    <button class="filter-chip" data-tag="爭議" onclick="setTagFilter('爭議',this)">⚡ 爭議</button>
+    <button class="filter-chip" data-tag="旅遊" onclick="setTagFilter('旅遊',this)">🗺️ 旅遊</button>
+    <button class="filter-chip" data-tag="秘境" onclick="setTagFilter('秘境',this)">🏔️ 秘境</button>
+    <button class="filter-chip" data-tag="跑步" onclick="setTagFilter('跑步',this)">🏃 跑步</button>
+    <button class="filter-chip" data-tag="登山" onclick="setTagFilter('登山',this)">⛰️ 登山</button>
+    <button class="filter-chip" data-tag="待買" onclick="setTagFilter('待買',this)">🛒 待買</button>
+    <button class="filter-chip" data-tag="待看" onclick="setTagFilter('待看',this)">👀 待看</button>
+    <button class="filter-chip" data-tag="教學" onclick="setTagFilter('教學',this)">📚 教學</button>
   </div>
 </div>
 
@@ -220,18 +235,30 @@ textarea.inp{resize:none;line-height:1.6;min-height:100px}
     <!-- 圖片上傳 -->
     <div id="tab-image" style="display:none">
       <img id="img-preview" class="img-preview">
+      <!-- 拖曳/貼上區域 -->
+      <div id="drop-zone"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="onImageDrop(event)"
+        style="border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;margin-bottom:10px;cursor:pointer;transition:border-color 0.2s"
+        onclick="document.getElementById('img-input').click()">
+        <div style="font-size:2rem;margin-bottom:8px">🖼️</div>
+        <div style="font-size:0.82rem;color:var(--dim)">點擊選擇、拖曳或 Ctrl+V 貼上圖片</div>
+      </div>
       <input type="file" id="img-input" accept="image/*" style="display:none" onchange="onImageSelect(this)">
-      <button class="submit-btn" onclick="document.getElementById('img-input').click()" style="margin-bottom:10px;background:var(--surface2);color:var(--text);border:1px solid var(--border)">
-        📷 選擇圖片
-      </button>
     </div>
 
-    <!-- 標籤 -->
+    <!-- 手動標籤 -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:0.72rem;color:var(--dim);margin-bottom:8px;letter-spacing:0.05em">🏷️ 選擇標籤（可多選）</div>
+      <div id="tag-groups-ui"></div>
+      <div class="tags-preview" id="tags-preview" style="margin-top:8px"></div>
+    </div>
+    <!-- 自訂標籤 -->
     <div class="tag-input-wrap">
-      <input class="inp" id="tag-input" placeholder="新增標籤..." style="margin-bottom:0;flex:1" onkeydown="if(event.key==='Enter'){addTag();event.preventDefault()}">
+      <input class="inp" id="tag-input" placeholder="自訂標籤..." style="margin-bottom:0;flex:1" onkeydown="if(event.key==='Enter'){addTag();event.preventDefault()}">
       <button onclick="addTag()" style="padding:10px 14px;background:rgba(124,106,247,0.15);border:1px solid var(--accent);border-radius:10px;color:var(--accent);cursor:pointer;font-size:0.85rem">加入</button>
     </div>
-    <div class="tags-preview" id="tags-preview"></div>
 
     <!-- AI 開關 -->
     <div class="ai-toggle-row">
@@ -264,14 +291,30 @@ const USER_ID  = localStorage.getItem('notes_user') || 'default';
 
 let currentFilter = '';
 let currentSearch = '';
+let currentTagFilter = '';
 let allNotes = [];
 let pendingTags = [];
 let pendingImageB64 = '';
 let currentTab = 'note';
 let searchTimer = null;
 
+// 預設標籤群組
+const TAG_GROUPS = [
+  { icon: '😂', name: '趣味', tags: ['梗圖', '搞笑', '迷因'] },
+  { icon: '🔥', name: '話題', tags: ['政治', '爭議', '時事', '經典言論'] },
+  { icon: '🏃', name: '運動', tags: ['跑步', '登山', '健身', '比賽'] },
+  { icon: '🗺️', name: '探索', tags: ['旅遊', '秘境', '美食探店', '住宿'] },
+  { icon: '🛒', name: '待辦', tags: ['待買', '待看', '想去', '待辦'] },
+  { icon: '📚', name: '知識', tags: ['教學', '攻略', '評測', '食譜'] },
+];
+
 // ── 初始化 ──
 window.addEventListener('load', () => {
+  // 註冊 Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/my-notes/sw.js').catch(e => console.log('SW:', e));
+  }
+
   document.getElementById('api-url-input').value = localStorage.getItem('notes_api') || '';
   document.getElementById('user-id-input').value = localStorage.getItem('notes_user') || 'default';
   document.getElementById('gemini-key-input').value = localStorage.getItem('notes_gemini') || '';
@@ -390,6 +433,7 @@ async function loadNotes() {
 function renderNotes() {
   let notes = allNotes;
   if (currentFilter) notes = notes.filter(n => n.category === currentFilter);
+  if (currentTagFilter) notes = notes.filter(n => (n.tags||[]).includes(currentTagFilter));
   if (currentSearch) {
     notes = notes.filter(n => {
       const preview = n.preview || {};
@@ -521,6 +565,7 @@ function showAddModal() {
   document.getElementById('img-preview').style.display = 'none';
   document.getElementById('img-preview').src = '';
   document.getElementById('add-modal').classList.add('show');
+  renderTagGroups();
 }
 
 function hideAddModal() {
@@ -558,28 +603,7 @@ function removeTag(t) {
 function onImageSelect(input) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    // 壓縮圖片
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const max = 1080;
-      let w = img.width, h = img.height;
-      if (Math.max(w,h) > max) {
-        const r = max / Math.max(w,h);
-        w = Math.round(w*r); h = Math.round(h*r);
-      }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      pendingImageB64 = dataUrl.split(',')[1];
-      document.getElementById('img-preview').src = dataUrl;
-      document.getElementById('img-preview').style.display = 'block';
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+  processImageFile(file);
 }
 
 // ── 送出筆記 ──
@@ -699,6 +723,101 @@ function handlePaste(e, inputId) {
     }
   }
   // 沒有 Rich Text 就用預設貼上行為
+}
+
+// ── 標籤篩選 ──
+function setTagFilter(tag, el) {
+  currentTagFilter = tag;
+  document.querySelectorAll('#tag-filter-scroll .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderNotes();
+}
+
+// ── 渲染標籤群組 ──
+function renderTagGroups() {
+  const el = document.getElementById('tag-groups-ui');
+  if (!el) return;
+  el.innerHTML = TAG_GROUPS.map(g => `
+    <div style="margin-bottom:8px">
+      <div style="font-size:0.65rem;color:var(--dim);margin-bottom:5px">${g.icon} ${g.name}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${g.tags.map(t => `
+          <button onclick="togglePresetTag('${t}',this)"
+            style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:0.72rem;cursor:pointer;transition:all 0.15s"
+            data-preset="${t}">${t}</button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function togglePresetTag(tag, btn) {
+  if (pendingTags.includes(tag)) {
+    pendingTags = pendingTags.filter(t => t !== tag);
+    btn.style.background = 'transparent';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--dim)';
+  } else {
+    pendingTags.push(tag);
+    btn.style.background = 'rgba(124,106,247,0.2)';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+  }
+  renderPendingTags();
+}
+
+// ── 拖曳圖片 ──
+function onImageDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer?.files?.[0];
+  if (file && file.type.startsWith('image/')) {
+    processImageFile(file);
+  }
+}
+
+// ── 全域 paste 監聽（Ctrl+V 貼圖）──
+document.addEventListener('paste', e => {
+  // 只在圖片 tab 開啟時生效
+  if (currentTab !== 'image') return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) {
+        processImageFile(file);
+        e.preventDefault();
+        break;
+      }
+    }
+  }
+});
+
+function processImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const max = 1080;
+      let w = img.width, h = img.height;
+      if (Math.max(w,h) > max) {
+        const r = max / Math.max(w,h);
+        w = Math.round(w*r); h = Math.round(h*r);
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      pendingImageB64 = dataUrl.split(',')[1];
+      const preview = document.getElementById('img-preview');
+      preview.src = dataUrl;
+      preview.style.display = 'block';
+      showToast('✅ 圖片已載入');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 // ── 外部連結開啟（iOS PWA 相容）──
