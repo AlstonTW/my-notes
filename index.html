@@ -559,10 +559,10 @@ async function submitNote() {
     if (!text) { showToast('請輸入內容'); return; }
 
     // 偵測文字中是否有夾雜網址（例如 momo、蝦皮分享）
-    const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
+    const urlMatch = text.match(/(https?:\/\/\S+)/);
     if (urlMatch) {
-      const extractedUrl = urlMatch[1];
-      const extractedText = text.replace(urlMatch[0], '').trim().replace(/\n+/g, ' ').trim();
+      const extractedUrl = urlMatch[1].replace(/[)】」'">]+$/, '');
+      const extractedText = text.replace(urlMatch[1], '').trim().replace(/\s+/g, ' ').trim();
       body.type = 'mixed';
       body.content = extractedText || extractedUrl;
       body.url = extractedUrl;
@@ -573,11 +573,11 @@ async function submitNote() {
   } else if (currentTab === 'url') {
     const raw = document.getElementById('url-input').value.trim();
     if (!raw) { showToast('請輸入網址'); return; }
-    // 從文字中抽取網址（支援含文字的分享格式）
-    const urlMatch2 = raw.match(/(https?:\/\/[^\s]+)/);
+    // 抓取網址（支援：純網址、文字+空格+網址、文字緊黏網址）
+    const urlMatch2 = raw.match(/(https?:\/\/\S+)/);
     if (urlMatch2) {
-      const extractedUrl2 = urlMatch2[1];
-      const extractedText2 = raw.replace(urlMatch2[0], '').trim().replace(/\n+/g,' ').trim();
+      const extractedUrl2 = urlMatch2[1].replace(/[)】」'">]+$/, ''); // 去掉尾部標點
+      const extractedText2 = raw.replace(urlMatch2[1], '').trim().replace(/\s+/g,' ').trim();
       if (extractedText2) {
         body.type = 'mixed';
         body.content = extractedText2;
@@ -587,8 +587,9 @@ async function submitNote() {
         body.url = extractedUrl2;
       }
     } else {
-      body.type = 'url';
-      body.url = raw;
+      // 沒有網址就當純文字存
+      body.type = 'note';
+      body.content = raw;
     }
   } else {
     if (!pendingImageB64) { showToast('請選擇圖片'); return; }
