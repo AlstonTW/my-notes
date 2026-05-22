@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="雜記本">
+<title>雜記本</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f0f13;--surface:#1a1a22;--surface2:#22222e;--border:rgba(255,255,255,0.08);
+  --text:#f0f0f5;--dim:#888;--accent:#7c6af7;--accent2:#5b52d4;
+  --green:#4ade80;--red:#f87171;--orange:#fb923c;--blue:#60a5fa;--pink:#f472b6;
+}
+body{font-family:-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:48px 16px 14px;position:sticky;top:0;z-index:100}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.app-title{font-size:1.4rem;font-weight:700;letter-spacing:-0.02em}
+.app-title span{color:var(--accent)}
+.header-actions{display:flex;gap:8px}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.icon-btn:active{transform:scale(0.9)}
+.icon-btn.active{background:rgba(124,106,247,0.15);border-color:var(--accent);color:var(--accent)}
+
+/* 搜尋 */
+.search-wrap{position:relative;margin-bottom:10px}
+.search-input{width:100%;padding:10px 14px 10px 38px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.88rem;outline:none}
+.search-input:focus{border-color:var(--accent)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:0.9rem;pointer-events:none}
+
+/* 分類篩選 */
+.filter-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.filter-scroll::-webkit-scrollbar{display:none}
+.filter-chip{flex-shrink:0;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:0.75rem;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.filter-chip.active{background:rgba(124,106,247,0.2);border-color:var(--accent);color:var(--accent);font-weight:600}
+
+/* 主內容 */
+.main{padding:14px}
+
+/* 筆記卡片 */
+.note-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;position:relative;transition:transform 0.15s}
+.note-card:active{transform:scale(0.99)}
+
+/* 圖片卡片 */
+.note-img{width:100%;max-height:220px;object-fit:cover;display:block}
+.note-img-thumb{width:100%;height:180px;object-fit:cover;display:block}
+
+/* URL 卡片 */
+.url-preview{display:flex;gap:10px;padding:12px}
+.url-thumb{width:70px;height:70px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.8rem}
+.url-info{flex:1;min-width:0}
+.url-title{font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.url-desc{font-size:0.72rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}
+.url-domain{font-size:0.68rem;color:var(--accent);display:flex;align-items:center;gap:4px}
+
+/* 文字卡片 */
+.note-body{padding:12px}
+.note-content{font-size:0.85rem;color:var(--text);line-height:1.6;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;margin-bottom:6px}
+.note-summary{font-size:0.72rem;color:var(--accent);font-style:italic;margin-bottom:6px}
+
+/* 卡片底部 */
+.note-footer{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border)}
+.note-meta{display:flex;align-items:center;gap:8px}
+.note-cat{font-size:0.65rem;padding:2px 8px;border-radius:10px;font-weight:600}
+.note-date{font-size:0.65rem;color:var(--dim)}
+.note-tags{display:flex;gap:4px;flex-wrap:wrap}
+.note-tag{font-size:0.60rem;padding:1px 6px;background:rgba(124,106,247,0.15);border-radius:6px;color:var(--accent)}
+.note-del{width:28px;height:28px;border-radius:8px;border:none;background:rgba(248,113,113,0.1);color:var(--red);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* 分類顏色 */
+.cat-shopping{background:rgba(251,146,60,0.15);color:var(--orange)}
+.cat-food{background:rgba(74,222,128,0.15);color:var(--green)}
+.cat-social{background:rgba(244,114,182,0.15);color:var(--pink)}
+.cat-media{background:rgba(248,113,113,0.15);color:var(--red)}
+.cat-info{background:rgba(96,165,250,0.15);color:var(--blue)}
+.cat-image{background:rgba(124,106,247,0.15);color:var(--accent)}
+.cat-note{background:rgba(255,255,255,0.08);color:var(--dim)}
+.cat-url{background:rgba(96,165,250,0.15);color:var(--blue)}
+.cat-other{background:rgba(255,255,255,0.06);color:var(--dim)}
+
+/* 新增按鈕 */
+.fab{position:fixed;bottom:20px;right:16px;width:56px;height:56px;border-radius:18px;background:var(--accent);border:none;color:white;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 20px rgba(124,106,247,0.4);z-index:200;display:flex;align-items:center;justify-content:center;transition:transform 0.15s}
+.fab:active{transform:scale(0.92)}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:flex-end}
+.modal-bg.show{display:flex}
+.modal-sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:1rem;font-weight:700;margin-bottom:16px}
+
+/* 輸入 */
+.input-tabs{display:flex;gap:6px;margin-bottom:14px}
+.input-tab{flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:0.80rem;cursor:pointer;text-align:center;transition:all 0.15s}
+.input-tab.active{background:rgba(124,106,247,0.15);border-color:var(--accent);color:var(--accent);font-weight:600}
+
+.inp{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.88rem;outline:none;margin-bottom:10px;font-family:-apple-system,sans-serif}
+.inp:focus{border-color:var(--accent)}
+textarea.inp{resize:none;line-height:1.6;min-height:100px}
+
+.tag-input-wrap{display:flex;gap:8px;margin-bottom:10px}
+.tags-preview{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;min-height:0}
+.tag-item{font-size:0.72rem;padding:2px 8px;background:rgba(124,106,247,0.15);border-radius:8px;color:var(--accent);cursor:pointer}
+
+/* AI 開關 */
+.ai-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border-radius:10px;margin-bottom:12px}
+.ai-toggle-label{font-size:0.80rem;color:var(--dim)}
+.ai-toggle-label span{font-size:0.68rem;color:var(--accent);display:block;margin-top:2px}
+.toggle{position:relative;width:40px;height:22px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--surface);border:1px solid var(--border);border-radius:11px;cursor:pointer;transition:0.2s}
+.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--dim);border-radius:50%;transition:0.2s}
+.toggle input:checked+.toggle-slider{background:rgba(124,106,247,0.3);border-color:var(--accent)}
+.toggle input:checked+.toggle-slider::before{transform:translateX(18px);background:var(--accent)}
+
+/* 圖片預覽 */
+.img-preview{width:100%;border-radius:10px;max-height:200px;object-fit:contain;margin-bottom:10px;display:none}
+
+/* 送出按鈕 */
+.submit-btn{width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:opacity 0.15s}
+.submit-btn:active{opacity:0.8}
+.submit-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* 空狀態 */
+.empty{text-align:center;padding:60px 20px;color:var(--dim)}
+.empty-icon{font-size:3rem;margin-bottom:12px}
+
+/* loading */
+.loading{text-align:center;padding:40px;color:var(--dim)}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* toast */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,0.95);color:var(--text);padding:10px 20px;border-radius:20px;font-size:0.82rem;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;border:1px solid var(--border)}
+.toast.show{opacity:1}
+
+/* 設定 */
+.settings-panel{display:none;padding:14px;background:var(--surface);border-top:1px solid var(--border)}
+.settings-panel.show{display:block}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:0.85rem}
+.settings-row:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="app-title">📒 雜<span>記</span>本</div>
+    <div class="header-actions">
+      <button class="icon-btn" id="settings-btn" onclick="toggleSettings()">⚙️</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="search-input" placeholder="搜尋筆記..." oninput="onSearch()">
+  </div>
+  <div class="filter-scroll" id="filter-scroll">
+    <button class="filter-chip active" data-cat="" onclick="setFilter('',this)">全部</button>
+    <button class="filter-chip" data-cat="note" onclick="setFilter('note',this)">💬 文字</button>
+    <button class="filter-chip" data-cat="url" onclick="setFilter('url',this)">🔗 網址</button>
+    <button class="filter-chip" data-cat="image" onclick="setFilter('image',this)">🖼️ 圖片</button>
+    <button class="filter-chip" data-cat="shopping" onclick="setFilter('shopping',this)">🛍️ 購物</button>
+    <button class="filter-chip" data-cat="food" onclick="setFilter('food',this)">🍜 美食</button>
+    <button class="filter-chip" data-cat="social" onclick="setFilter('social',this)">📱 社群</button>
+    <button class="filter-chip" data-cat="media" onclick="setFilter('media',this)">🎬 影音</button>
+    <button class="filter-chip" data-cat="info" onclick="setFilter('info',this)">📰 資訊</button>
+  </div>
+</div>
+
+<!-- 設定面板 -->
+<div class="settings-panel" id="settings-panel">
+  <div class="settings-row">
+    <span>API 伺服器網址</span>
+  </div>
+  <input class="inp" id="api-url-input" placeholder="https://your-notes-api.onrender.com" style="margin-top:8px">
+  <div class="settings-row">
+    <span>用戶 ID</span>
+  </div>
+  <input class="inp" id="user-id-input" placeholder="預設：default">
+  <div class="settings-row">
+    <span style="color:var(--dim);font-size:0.75rem">AI 功能（需要 Gemini API Key）</span>
+  </div>
+  <input class="inp" id="gemini-key-input" placeholder="AIzaSy... (選填，開啟 AI 分類+摘要)" type="password">
+  <button class="submit-btn" onclick="saveSettings()" style="margin-top:8px">儲存設定</button>
+</div>
+
+<div class="main" id="main">
+  <div class="loading"><div class="spinner"></div>載入中...</div>
+</div>
+
+<button class="fab" onclick="showAddModal()">＋</button>
+
+<!-- 新增 Modal -->
+<div class="modal-bg" id="add-modal" onclick="if(event.target===this)hideAddModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新增筆記</div>
+
+    <div class="input-tabs">
+      <button class="input-tab active" onclick="switchInputTab('note',this)">💬 文字</button>
+      <button class="input-tab" onclick="switchInputTab('url',this)">🔗 網址</button>
+      <button class="input-tab" onclick="switchInputTab('image',this)">🖼️ 圖片</button>
+    </div>
+
+    <!-- 文字輸入 -->
+    <div id="tab-note">
+      <textarea class="inp" id="note-content" placeholder="輸入任何內容..."></textarea>
+    </div>
+
+    <!-- 網址輸入 -->
+    <div id="tab-url" style="display:none">
+      <input class="inp" id="url-input" type="url" placeholder="貼上網址...">
+    </div>
+
+    <!-- 圖片上傳 -->
+    <div id="tab-image" style="display:none">
+      <img id="img-preview" class="img-preview">
+      <input type="file" id="img-input" accept="image/*" style="display:none" onchange="onImageSelect(this)">
+      <button class="submit-btn" onclick="document.getElementById('img-input').click()" style="margin-bottom:10px;background:var(--surface2);color:var(--text);border:1px solid var(--border)">
+        📷 選擇圖片
+      </button>
+    </div>
+
+    <!-- 標籤 -->
+    <div class="tag-input-wrap">
+      <input class="inp" id="tag-input" placeholder="新增標籤..." style="margin-bottom:0;flex:1" onkeydown="if(event.key==='Enter'){addTag();event.preventDefault()}">
+      <button onclick="addTag()" style="padding:10px 14px;background:rgba(124,106,247,0.15);border:1px solid var(--accent);border-radius:10px;color:var(--accent);cursor:pointer;font-size:0.85rem">加入</button>
+    </div>
+    <div class="tags-preview" id="tags-preview"></div>
+
+    <!-- AI 開關 -->
+    <div class="ai-toggle-row">
+      <div class="ai-toggle-label">
+        🤖 AI 分類與摘要
+        <span>需要設定 Gemini API Key</span>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="ai-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitNote()">儲存筆記</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = localStorage.getItem('notes_api') || '';
+const USER_ID  = localStorage.getItem('notes_user') || 'default';
+
+let currentFilter = '';
+let currentSearch = '';
+let allNotes = [];
+let pendingTags = [];
+let pendingImageB64 = '';
+let currentTab = 'note';
+let searchTimer = null;
+
+// ── 初始化 ──
+window.addEventListener('load', () => {
+  document.getElementById('api-url-input').value = localStorage.getItem('notes_api') || '';
+  document.getElementById('user-id-input').value = localStorage.getItem('notes_user') || 'default';
+  document.getElementById('gemini-key-input').value = localStorage.getItem('notes_gemini') || '';
+  if (!API_BASE) {
+    toggleSettings();
+    showToast('請先設定 API 伺服器網址');
+  } else {
+    loadNotes();
+  }
+});
+
+// ── 設定 ──
+function toggleSettings() {
+  const p = document.getElementById('settings-panel');
+  const btn = document.getElementById('settings-btn');
+  p.classList.toggle('show');
+  btn.classList.toggle('active');
+}
+
+function saveSettings() {
+  const api = document.getElementById('api-url-input').value.trim().replace(/\/$/, '');
+  const uid = document.getElementById('user-id-input').value.trim() || 'default';
+  const gk  = document.getElementById('gemini-key-input').value.trim();
+  localStorage.setItem('notes_api', api);
+  localStorage.setItem('notes_user', uid);
+  if (gk) localStorage.setItem('notes_gemini', gk);
+  showToast('✅ 設定已儲存');
+  toggleSettings();
+  loadNotes();
+}
+
+// ── 分類標籤 ──
+const CAT_LABELS = {
+  shopping: '🛍️ 購物', food: '🍜 美食', social: '📱 社群',
+  media: '🎬 影音', info: '📰 資訊', image: '🖼️ 圖片',
+  note: '💬 文字', url: '🔗 網址', other: '📦 其他'
+};
+
+// ── 篩選 ──
+function setFilter(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderNotes();
+}
+
+function onSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    currentSearch = document.getElementById('search-input').value.trim().toLowerCase();
+    renderNotes();
+  }, 300);
+}
+
+// ── 載入筆記 ──
+async function loadNotes() {
+  const api = localStorage.getItem('notes_api');
+  const uid = localStorage.getItem('notes_user') || 'default';
+  if (!api) return;
+
+  document.getElementById('main').innerHTML = '<div class="loading"><div class="spinner"></div>載入中...</div>';
+  try {
+    const r = await fetch(`${api}/api/notes?user_id=${uid}&limit=100`);
+    const d = await r.json();
+    if (d.success) {
+      allNotes = d.notes || [];
+      renderNotes();
+    } else {
+      document.getElementById('main').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>載入失敗</div>`;
+    }
+  } catch(e) {
+    document.getElementById('main').innerHTML = `<div class="empty"><div class="empty-icon">🔌</div>連線失敗<br><small style="font-size:0.75rem;color:var(--dim)">${e.message}</small></div>`;
+  }
+}
+
+// ── 渲染筆記 ──
+function renderNotes() {
+  let notes = allNotes;
+  if (currentFilter) notes = notes.filter(n => n.category === currentFilter);
+  if (currentSearch) {
+    notes = notes.filter(n =>
+      (n.content||'').toLowerCase().includes(currentSearch) ||
+      (n.url||'').toLowerCase().includes(currentSearch) ||
+      (n.summary||'').toLowerCase().includes(currentSearch) ||
+      ((n.tags||[]).some(t => t.toLowerCase().includes(currentSearch)))
+    );
+  }
+
+  const main = document.getElementById('main');
+  if (!notes.length) {
+    main.innerHTML = `<div class="empty"><div class="empty-icon">${currentSearch ? '🔍' : '📝'}</div>${currentSearch ? '找不到符合的筆記' : '還沒有任何筆記<br><small style="font-size:0.75rem">點右下角 ＋ 開始記錄</small>'}</div>`;
+    return;
+  }
+
+  main.innerHTML = notes.map(n => makeCard(n)).join('');
+}
+
+function makeCard(n) {
+  const catClass = `cat-${n.category || 'other'}`;
+  const catLabel = CAT_LABELS[n.category] || '📦 其他';
+  const date = n.created_at ? new Date(n.created_at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  const tags = (n.tags||[]).map(t => `<span class="note-tag">#${t}</span>`).join('');
+  const footer = `
+    <div class="note-footer">
+      <div class="note-meta">
+        <span class="note-cat ${catClass}">${catLabel}</span>
+        <span class="note-date">${date}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${tags}
+        <button class="note-del" onclick="deleteNote('${n.id}')">🗑️</button>
+      </div>
+    </div>`;
+
+  // 圖片卡片
+  if (n.type === 'image' && n.image_url) {
+    return `<div class="note-card">
+      <img class="note-img-thumb" src="${n.image_url}" loading="lazy" onclick="window.open('${n.image_url}','_blank')">
+      ${footer}
+    </div>`;
+  }
+
+  // 網址卡片
+  if (n.type === 'url') {
+    const p = n.preview || {};
+    const thumb = p.image
+      ? `<img src="${p.image}" style="width:70px;height:70px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+      : `<div class="url-thumb">🔗</div>`;
+    return `<div class="note-card" onclick="window.open('${n.url}','_blank')">
+      <div class="url-preview">
+        ${thumb}
+        <div class="url-info">
+          <div class="url-title">${p.title || n.url}</div>
+          ${p.description ? `<div class="url-desc">${p.description}</div>` : ''}
+          <div class="url-domain">🌐 ${p.domain || ''}</div>
+        </div>
+      </div>
+      ${footer}
+    </div>`;
+  }
+
+  // 文字卡片
+  const summary = n.summary ? `<div class="note-summary">💡 ${n.summary}</div>` : '';
+  return `<div class="note-card">
+    <div class="note-body">
+      ${summary}
+      <div class="note-content">${(n.content||'').replace(/\n/g,'<br>')}</div>
+    </div>
+    ${footer}
+  </div>`;
+}
+
+// ── 新增 Modal ──
+function showAddModal() {
+  pendingTags = [];
+  pendingImageB64 = '';
+  document.getElementById('note-content').value = '';
+  document.getElementById('url-input').value = '';
+  document.getElementById('tag-input').value = '';
+  document.getElementById('tags-preview').innerHTML = '';
+  document.getElementById('img-preview').style.display = 'none';
+  document.getElementById('img-preview').src = '';
+  document.getElementById('add-modal').classList.add('show');
+}
+
+function hideAddModal() {
+  document.getElementById('add-modal').classList.remove('show');
+}
+
+function switchInputTab(tab, btn) {
+  currentTab = tab;
+  ['note','url','image'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.input-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function addTag() {
+  const input = document.getElementById('tag-input');
+  const val = input.value.trim().replace(/^#/,'');
+  if (!val || pendingTags.includes(val)) return;
+  pendingTags.push(val);
+  input.value = '';
+  renderPendingTags();
+}
+
+function renderPendingTags() {
+  document.getElementById('tags-preview').innerHTML =
+    pendingTags.map(t => `<span class="tag-item" onclick="removeTag('${t}')">#${t} ✕</span>`).join('');
+}
+
+function removeTag(t) {
+  pendingTags = pendingTags.filter(x => x !== t);
+  renderPendingTags();
+}
+
+function onImageSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // 壓縮圖片
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const max = 1080;
+      let w = img.width, h = img.height;
+      if (Math.max(w,h) > max) {
+        const r = max / Math.max(w,h);
+        w = Math.round(w*r); h = Math.round(h*r);
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      pendingImageB64 = dataUrl.split(',')[1];
+      document.getElementById('img-preview').src = dataUrl;
+      document.getElementById('img-preview').style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── 送出筆記 ──
+async function submitNote() {
+  const api = localStorage.getItem('notes_api');
+  const uid = localStorage.getItem('notes_user') || 'default';
+  const useAI = document.getElementById('ai-toggle').checked;
+  const geminiKey = localStorage.getItem('notes_gemini') || '';
+  const btn = document.getElementById('submit-btn');
+
+  let body = {user_id: uid, tags: pendingTags, use_ai: useAI && !!geminiKey};
+
+  if (currentTab === 'note') {
+    const content = document.getElementById('note-content').value.trim();
+    if (!content) { showToast('請輸入內容'); return; }
+    body.type = 'note'; body.content = content;
+  } else if (currentTab === 'url') {
+    const url = document.getElementById('url-input').value.trim();
+    if (!url) { showToast('請輸入網址'); return; }
+    body.type = 'url'; body.url = url;
+  } else {
+    if (!pendingImageB64) { showToast('請選擇圖片'); return; }
+    body.type = 'image'; body.image = pendingImageB64;
+  }
+
+  btn.disabled = true; btn.textContent = '儲存中...';
+  try {
+    const r = await fetch(`${api}/api/notes`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.success) {
+      allNotes.unshift(d.note);
+      renderNotes();
+      hideAddModal();
+      showToast('✅ 已儲存');
+    } else {
+      showToast('❌ ' + (d.error || '儲存失敗'));
+    }
+  } catch(e) {
+    showToast('❌ ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '儲存筆記';
+  }
+}
+
+// ── 刪除 ──
+async function deleteNote(id) {
+  if (!confirm('確定刪除？')) return;
+  const api = localStorage.getItem('notes_api');
+  try {
+    const r = await fetch(`${api}/api/notes/${id}`, {method: 'DELETE'});
+    const d = await r.json();
+    if (d.success) {
+      allNotes = allNotes.filter(n => n.id !== id);
+      renderNotes();
+      showToast('🗑️ 已刪除');
+    }
+  } catch(e) { showToast('❌ ' + e.message); }
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
