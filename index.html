@@ -437,6 +437,22 @@ function makeCard(n) {
     </div>`;
   }
 
+  // 混合卡片（文字 + 網址，例如 momo 分享）
+  if (n.type === 'mixed' && n.url) {
+    const summary = n.summary ? `<div class="note-summary">💡 ${n.summary}</div>` : '';
+    return `<div class="note-card">
+      <div class="note-body">
+        ${summary}
+        <div class="note-content" style="margin-bottom:8px">${(n.content||'').replace(/\n/g,'<br>')}</div>
+        <a href="${n.url}" target="_blank" onclick="event.stopPropagation()"
+          style="display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--accent);text-decoration:none;padding:5px 10px;background:rgba(124,106,247,0.1);border-radius:8px;border:1px solid rgba(124,106,247,0.2)">
+          🔗 ${(n.url.match(/^https?:\/\/([^/]+)/)||[])[1]||n.url}
+        </a>
+      </div>
+      ${footer}
+    </div>`;
+  }
+
   // 文字卡片
   const summary = n.summary ? `<div class="note-summary">💡 ${n.summary}</div>` : '';
   return `<div class="note-card">
@@ -531,9 +547,21 @@ async function submitNote() {
   let body = {user_id: uid, tags: pendingTags, use_ai: useAI && !!geminiKey};
 
   if (currentTab === 'note') {
-    const content = document.getElementById('note-content').value.trim();
-    if (!content) { showToast('請輸入內容'); return; }
-    body.type = 'note'; body.content = content;
+    const text = document.getElementById('note-content').value.trim();
+    if (!text) { showToast('請輸入內容'); return; }
+
+    // 偵測文字中是否有夾雜網址（例如 momo、蝦皮分享）
+    const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
+    if (urlMatch) {
+      const extractedUrl = urlMatch[1];
+      const extractedText = text.replace(urlMatch[0], '').trim().replace(/\n+/g, ' ').trim();
+      body.type = 'mixed';
+      body.content = extractedText || extractedUrl;
+      body.url = extractedUrl;
+    } else {
+      body.type = 'note';
+      body.content = text;
+    }
   } else if (currentTab === 'url') {
     const url = document.getElementById('url-input').value.trim();
     if (!url) { showToast('請輸入網址'); return; }
