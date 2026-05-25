@@ -278,6 +278,43 @@ textarea.inp{resize:none;line-height:1.6;min-height:100px}
 
 <div class="toast" id="toast"></div>
 
+<!-- 編輯筆記 Modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;align-items:flex-end" onclick="if(event.target===this)closeEditModal()">
+  <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:85vh;overflow-y:auto">
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px"></div>
+    <div style="font-size:1rem;font-weight:700;margin-bottom:16px">✏️ 編輯筆記</div>
+
+    <!-- 系統分類 -->
+    <div style="font-size:0.72rem;color:var(--dim);margin-bottom:6px">系統分類</div>
+    <select id="edit-category" class="inp" style="margin-bottom:14px">
+      <option value="note">💬 文字</option>
+      <option value="url">🔗 網址</option>
+      <option value="image">🖼️ 圖片</option>
+      <option value="shopping">🛍️ 購物</option>
+      <option value="food">🍜 美食</option>
+      <option value="social">📱 社群</option>
+      <option value="media">🎬 影音</option>
+      <option value="info">📰 資訊</option>
+      <option value="other">📦 其他</option>
+    </select>
+
+    <!-- 標籤群組 -->
+    <div style="font-size:0.72rem;color:var(--dim);margin-bottom:8px">手動標籤</div>
+    <div id="edit-tag-groups"></div>
+    <div id="edit-tags-preview" style="display:flex;gap:4px;flex-wrap:wrap;margin:8px 0"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input class="inp" id="edit-tag-input" placeholder="自訂標籤..." style="margin-bottom:0;flex:1" onkeydown="if(event.key==='Enter'){addEditTag();event.preventDefault()}">
+      <button onclick="addEditTag()" style="padding:10px 14px;background:rgba(124,106,247,0.15);border:1px solid var(--accent);border-radius:10px;color:var(--accent);cursor:pointer;font-size:0.85rem">加入</button>
+    </div>
+
+    <!-- 備註 -->
+    <div style="font-size:0.72rem;color:var(--dim);margin-bottom:6px">備註</div>
+    <textarea class="inp" id="edit-note" rows="3" placeholder="加入備註..."></textarea>
+
+    <button onclick="saveEdit()" style="width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:4px">儲存修改</button>
+  </div>
+</div>
+
 <!-- 圖片放大 Modal -->
 <div id="img-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;align-items:center;justify-content:center;padding:20px" onclick="closeImageModal()">
   <img id="img-modal-img" src="" style="max-width:100%;max-height:90vh;border-radius:10px;object-fit:contain">
@@ -470,7 +507,8 @@ function makeCard(n) {
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         ${tags}
-        <button class="note-del" onclick="event.stopPropagation();deleteNote('${n.id}')">🗑️</button>
+        <button onclick="event.stopPropagation();openEditModal('${n.id}')" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(124,106,247,0.1);color:var(--accent);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button>
+      <button class="note-del" onclick="event.stopPropagation();deleteNote('${n.id}')">🗑️</button>
       </div>
     </div>`;
 
@@ -680,6 +718,123 @@ async function submitNote() {
     showToast('❌ ' + e.message);
   } finally {
     btn.disabled = false; btn.textContent = '儲存筆記';
+  }
+}
+
+// ── 編輯筆記 ──
+let editingNoteId = null;
+let editingTags = [];
+
+function openEditModal(id) {
+  const note = allNotes.find(n => n.id === id);
+  if (!note) return;
+  editingNoteId = id;
+  editingTags = [...(note.tags || [])];
+
+  // 填入現有資料
+  document.getElementById('edit-category').value = note.category || 'note';
+  document.getElementById('edit-note').value = note.note || '';
+  document.getElementById('edit-tag-input').value = '';
+
+  // 渲染標籤群組
+  renderEditTagGroups();
+  renderEditTagsPreview();
+
+  document.getElementById('edit-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+  document.body.style.overflow = '';
+  editingNoteId = null;
+  editingTags = [];
+}
+
+function renderEditTagGroups() {
+  const el = document.getElementById('edit-tag-groups');
+  if (!el) return;
+  el.innerHTML = TAG_GROUPS.map(g => `
+    <div style="margin-bottom:8px">
+      <div style="font-size:0.65rem;color:var(--dim);margin-bottom:5px">${g.icon} ${g.name}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${g.tags.map(t => {
+          const isSelected = editingTags.includes(t);
+          return `<button onclick="toggleEditTag('${t}',this)"
+            style="padding:4px 10px;border-radius:20px;border:1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'};background:${isSelected ? 'rgba(124,106,247,0.2)' : 'transparent'};color:${isSelected ? 'var(--accent)' : 'var(--dim)'};font-size:0.72rem;cursor:pointer"
+            data-tag="${t}">${t}</button>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleEditTag(tag, btn) {
+  if (editingTags.includes(tag)) {
+    editingTags = editingTags.filter(t => t !== tag);
+    btn.style.background = 'transparent';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--dim)';
+  } else {
+    editingTags.push(tag);
+    btn.style.background = 'rgba(124,106,247,0.2)';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+  }
+  renderEditTagsPreview();
+}
+
+function addEditTag() {
+  const input = document.getElementById('edit-tag-input');
+  const val = input.value.trim().replace(/^#/, '');
+  if (!val || editingTags.includes(val)) return;
+  editingTags.push(val);
+  input.value = '';
+  renderEditTagGroups();
+  renderEditTagsPreview();
+}
+
+function renderEditTagsPreview() {
+  const el = document.getElementById('edit-tags-preview');
+  if (!el) return;
+  el.innerHTML = editingTags.map(t =>
+    `<span onclick="toggleEditTag('${t}',{style:{}})" style="font-size:0.72rem;padding:2px 8px;background:rgba(124,106,247,0.15);border-radius:8px;color:var(--accent);cursor:pointer">#${t} ✕</span>`
+  ).join('');
+}
+
+async function saveEdit() {
+  if (!editingNoteId) return;
+  const api = localStorage.getItem('notes_api');
+  const category = document.getElementById('edit-category').value;
+  const noteText = document.getElementById('edit-note').value.trim();
+
+  try {
+    const r = await fetch(`${api}/api/notes/${editingNoteId}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        category,
+        tags: editingTags,
+        note: noteText,
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      // 更新本地資料
+      const idx = allNotes.findIndex(n => n.id === editingNoteId);
+      if (idx !== -1) {
+        allNotes[idx].category = category;
+        allNotes[idx].tags = editingTags;
+        allNotes[idx].note = noteText;
+      }
+      renderNotes();
+      closeEditModal();
+      showToast('✅ 已更新');
+    } else {
+      showToast('❌ ' + (d.error || '更新失敗'));
+    }
+  } catch(e) {
+    showToast('❌ ' + e.message);
   }
 }
 
